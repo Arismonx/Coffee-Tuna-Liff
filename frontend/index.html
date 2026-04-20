@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div>
+        <img width="100px" id="profileImage" src=""/>
+        <div>
+            Hello <span id="profileName">name</span>
+        </div>
+        <div>
+            UID : <span id="profileUID">uid</span>
+        </div>
+    </div>
+    <button onclick=logOut() >Log out</button>
+    
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+    <script>
+        
+        // Function Logout Line
+        const logOut = () => {
+            liff.logout();
+            window.location.reload();
+        }
+
+        // Function main is init to Line login by use liffId.
+        // after then will get Profile for get data from that userID.
+        const main = async() =>{
+            try {
+                await liff.init({liffId:""});
+
+                // Check is LoggedIn
+                if(liff.isLoggedIn()){
+                    
+                    const profile = await liff.getProfile();
+                    // pull element by id from html tag and set new value from getProfile()
+
+                    document.getElementById("profileImage").src = profile.pictureUrl;
+                    document.getElementById("profileName").innerText = profile.displayName;
+                    document.getElementById("profileUID").innerText = profile.userId;
+                
+                }else{
+                    liff.login();
+                }
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        // Call function main() after run script
+        main();
+
+    </script>
+</body>
+</html>
