@@ -29,7 +29,7 @@ type EventMessage struct {
 	Text string `json:"text"`
 }
 
-// struct JSON Payload send to line server
+// struct JSON Reply Payload send to line server
 type Message struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
@@ -51,7 +51,7 @@ func webhook(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&body); err != nil {
 		fmt.Println("Error Bind JSON:", err)
-		ctx.JSON(400, gin.H{"error": "รูปแบบ JSON ไม่ถูกต้อง"})
+		ctx.JSON(400, gin.H{"error": err})
 		return
 	}
 
@@ -59,12 +59,17 @@ func webhook(ctx *gin.Context) {
 	if len(body.Events) > 0 {
 		event_0 := body.Events[0]
 
+		user_message := event_0.Message.Text
+		fmt.Println("User Message: ", user_message)
+
+		// Check type is type message
 		if event_0.Type == "message" {
+
 			// Payload Data Reply
 			payload := ReplyPayload{
 				ReplyToken: event_0.ReplyToken,
 				Messages: []Message{
-					{Type: "text", Text: "Hello World"},
+					{Type: "text", Text: user_message},
 				},
 			}
 
