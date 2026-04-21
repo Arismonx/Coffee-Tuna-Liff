@@ -19,9 +19,14 @@ type EventsPayload struct {
 }
 
 type WebhookEvent struct {
-	Type       string       `json:"type"`
-	ReplyToken string       `json:"replyToken"`
-	Message    EventMessage `json:"message"`
+	Type       string        `json:"type"`
+	ReplyToken string        `json:"replyToken"`
+	Message    EventMessage  `json:"message"`
+	Postback   EventPostback `json:"postback"`
+}
+
+type EventPostback struct {
+	Data string `json:"data"`
 }
 
 type EventMessage struct {
@@ -40,13 +45,47 @@ type ReplyPayload struct {
 	Messages   []Message `json:"messages"`
 }
 
+func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
+	// convert struct to string JSON (look like JSON.stringify)
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return
+	}
+
+	// Create Requset to Line Server
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	// Set Header
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+Token)
+
+	// Sent Request
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+
+	// Close
+	defer req.Body.Close()
+
+	// Check LINE Response
+	fmt.Println("LINE Response Status:", res.Status)
+}
+
 func webhook(ctx *gin.Context) {
 	Token := os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
 	// URL Reply
 	url := "https://api.line.me/v2/bot/message/reply"
 
-	// object even data webhook
+	// object event data webhook from request line server
 	var body EventsPayload
 
 	if err := ctx.ShouldBindJSON(&body); err != nil {
@@ -73,37 +112,22 @@ func webhook(ctx *gin.Context) {
 				},
 			}
 
-			// convert struct to string JSON (look like JSON.stringify)
-			jsonData, err := json.Marshal(payload)
-			if err != nil {
-				fmt.Println("Error marshaling JSON:", err)
-				return
+			CreateSendRequesReply(payload, Token, url)
+
+		}
+
+		if event_0.Type == "postback" {
+			fmt.Println("Data: ", event_0.Postback.Data)
+			if event_0.Postback.Data == "ปุ่มAนะ" {
+				payload := ReplyPayload{
+					ReplyToken: event_0.ReplyToken,
+					Messages: []Message{
+						{Type: "text", Text: "ปุ่มAนะ"},
+					},
+				}
+
+				CreateSendRequesReply(payload, Token, url)
 			}
-
-			// Create Requset to Line Server
-			req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-			if err != nil {
-				fmt.Println("Error creating request:", err)
-				return
-			}
-
-			// Set Header
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer "+Token)
-
-			// Sent Request
-			client := &http.Client{}
-			res, err := client.Do(req)
-			if err != nil {
-				fmt.Println("Error sending request:", err)
-				return
-			}
-
-			// Close
-			defer req.Body.Close()
-
-			// Check LINE Response
-			fmt.Println("LINE Response Status:", res.Status)
 		}
 
 	}
