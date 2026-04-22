@@ -13,6 +13,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// this past is format for Events Webhook from request line server
+// more detail https://developers.line.biz/en/reference/messaging-api/#webhooks
+
 // strcut events
 type EventsPayload struct {
 	Events []WebhookEvent
