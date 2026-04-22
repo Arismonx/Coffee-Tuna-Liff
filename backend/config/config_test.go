@@ -8,7 +8,7 @@ import (
 // run test by "go test -v"
 
 func TestLoadConfig(t *testing.T) {
-	cfg := LoadConfig()
+	cfg := LoadConfig("../.env")
 
 	// test expect to is empty string
 	if cfg.GeminiAPIKey == "" {

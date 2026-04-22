@@ -14,10 +14,10 @@ type Config struct {
 }
 
 // Function for load env
-func LoadConfig() Config {
+func LoadConfig(path string) Config {
 
 	// godotenv.Load("path of .ennv")
-	if err := godotenv.Load("../.env"); err != nil {
+	if err := godotenv.Load(path); err != nil {
 		log.Println("Error: No .env file found. Falling back to system environment variables.")
 	}
 
