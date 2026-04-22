@@ -1,12 +1,13 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
+// struct format from .env file and .env.example
 type Config struct {
 	LineChannelAccessToken string
 	GeminiAPIKey           string
@@ -14,8 +15,10 @@ type Config struct {
 
 // Function for load env
 func LoadConfig() Config {
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("Error loading .env file!")
+
+	// godotenv.Load("path of .ennv")
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Println("Error: No .env file found. Falling back to system environment variables.")
 	}
 
 	conf := Config{
