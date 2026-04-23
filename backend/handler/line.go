@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Arismonx/Coffee-Tuna-Liff/config"
+	"github.com/Arismonx/Coffee-Tuna-Liff/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -73,7 +74,7 @@ func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
 	}
 
 	// Close
-	defer req.Body.Close()
+	defer res.Body.Close()
 
 	// Check LINE Response
 	fmt.Println("LINE Response Status:", res.Status)
@@ -85,16 +86,18 @@ type LineHandler struct {
 }
 
 // Construct LineHandler
-func NewLineHandler(Config config.Config) *LineHandler {
+func NewLineHandler(
+	Config config.Config,
+) *LineHandler {
 	return &LineHandler{
 		Config: Config,
 	}
 }
 
 // Bind this func with struct LineHandler and can use attribute in struct
-func (this *LineHandler) Webhook(ctx *gin.Context) {
-	token := this.Config.LineChannelAccessToken
-
+func (h *LineHandler) Webhook(ctx *gin.Context) {
+	token := h.Config.LineChannelAccessToken
+	token_api_key := h.Config.GeminiAPIKey
 	// URL Reply
 	url := "https://api.line.me/v2/bot/message/reply"
 
@@ -107,9 +110,8 @@ func (this *LineHandler) Webhook(ctx *gin.Context) {
 		return
 	}
 
-	// Check events data have object events
-	if len(body.Events) > 0 {
-		event_0 := body.Events[0]
+	// Check events data have object events / Chat with Ai
+	for _, event_0 := range body.Events {
 
 		user_message := event_0.Message.Text
 		fmt.Println("User Message: ", user_message)
@@ -117,11 +119,14 @@ func (this *LineHandler) Webhook(ctx *gin.Context) {
 		// Check type is type message
 		if event_0.Type == "message" {
 
+			// Call function GenerateContent_textOnly get Text
+			resp_message := model.GenerateContent_textOnly(user_message, token_api_key)
+
 			// Payload Data Reply
 			payload := ReplyPayload{
 				ReplyToken: event_0.ReplyToken,
 				Messages: []Message{
-					{Type: "text", Text: user_message},
+					{Type: "text", Text: resp_message},
 				},
 			}
 
