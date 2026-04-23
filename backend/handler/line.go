@@ -2,13 +2,16 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Arismonx/Coffee-Tuna-Liff/config"
 	"github.com/Arismonx/Coffee-Tuna-Liff/model"
 	"github.com/gin-gonic/gin"
+	"github.com/google/generative-ai-go/genai"
 )
 
 // this past is format for Events Webhook from request line server
@@ -83,21 +86,26 @@ func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
 // strcut config
 type LineHandler struct {
 	Config config.Config
+	Model  *genai.GenerativeModel
 }
 
 // Construct LineHandler
 func NewLineHandler(
 	Config config.Config,
+	Model *genai.GenerativeModel,
 ) *LineHandler {
 	return &LineHandler{
 		Config: Config,
+		Model:  Model,
 	}
 }
 
 // Bind this func with struct LineHandler and can use attribute in struct
 func (h *LineHandler) Webhook(ctx *gin.Context) {
+
+	// Line Channel Access Token
 	token := h.Config.LineChannelAccessToken
-	token_api_key := h.Config.GeminiAPIKey
+
 	// URL Reply
 	url := "https://api.line.me/v2/bot/message/reply"
 
@@ -119,8 +127,12 @@ func (h *LineHandler) Webhook(ctx *gin.Context) {
 		// Check type is type message
 		if event_0.Type == "message" {
 
+			ctx_ai := context.Background()
+			ctx_ai, cancel := context.WithTimeout(ctx_ai, 15*time.Second)
+			defer cancel()
+
 			// Call function GenerateContent_textOnly get Text
-			resp_message := model.GenerateContent_textOnly(user_message, token_api_key)
+			resp_message := model.GenerateContent_textOnly(ctx_ai, user_message, h.Model)
 
 			// Payload Data Reply
 			payload := ReplyPayload{
