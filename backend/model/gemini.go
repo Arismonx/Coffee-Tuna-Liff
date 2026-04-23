@@ -21,7 +21,7 @@ func CreateModel(ctx context.Context, token string, seleteModel string) *genai.G
 	model := client.GenerativeModel(seleteModel)
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
-			genai.Text("คุณคือบอทตอบคำถามของร้านกาแฟ ให้ตอบแบบเป็นกันเอง สั้น กระชับ และตรงประเด็นที่สุด ไม่ต้องเกริ่นนำเยอะ"),
+			genai.Text("คุณคือบอทตอบคำถามของร้านกาแฟ ให้ตอบแบบเป็นกันเอง สั้น กระชับ และตรงประเด็นที่สุด ไม่ต้องเกริ่นนำเยอะ ลงท้ายด้วย ครับ"),
 		},
 	}
 	return model
