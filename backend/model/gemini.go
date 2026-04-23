@@ -9,6 +9,24 @@ import (
 	"google.golang.org/api/option"
 )
 
+func CreateModel(ctx context.Context, token string, seleteModel string) *genai.GenerativeModel {
+	// create request
+	client, err := genai.NewClient(ctx, option.WithAPIKey(token))
+	if err != nil {
+		log.Printf("Gemini Error NewClient: %v", err)
+	}
+	defer client.Close()
+
+	// send to model "gemini-2.5-flash"
+	model := client.GenerativeModel(seleteModel)
+	model.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{
+			genai.Text("คุณคือบอทตอบคำถามของร้านกาแฟ ให้ตอบแบบเป็นกันเอง สั้น กระชับ และตรงประเด็นที่สุด ไม่ต้องเกริ่นนำเยอะ"),
+		},
+	}
+	return model
+}
+
 // ============================================================================
 // Copyright 2023 Google LLC
 // Copyright 2026 Arismonx
@@ -26,23 +44,7 @@ import (
 // limitations under the License.
 // ============================================================================
 
-func GenerateContent_textOnly(message string, token string) string {
-	ctx := context.Background()
-
-	// create request
-	client, err := genai.NewClient(ctx, option.WithAPIKey(token))
-	if err != nil {
-		log.Printf("Gemini Error NewClient: %v", err)
-	}
-	defer client.Close()
-
-	// send to model
-	model := client.GenerativeModel("gemini-2.5-flash")
-	model.SystemInstruction = &genai.Content{
-		Parts: []genai.Part{
-			genai.Text("คุณคือบอทตอบคำถามของร้านกาแฟ ให้ตอบแบบเป็นกันเอง สั้น กระชับ และตรงประเด็นที่สุด ไม่ต้องเกริ่นนำเยอะ"),
-		},
-	}
+func GenerateContent_textOnly(ctx context.Context, message string, model *genai.GenerativeModel) string {
 	// response
 	resp, err := model.GenerateContent(ctx, genai.Text(message))
 	if err != nil {
@@ -58,7 +60,7 @@ func Response_TextFromGenerative_Model(resp *genai.GenerateContentResponse) stri
 		if cand.Content != nil {
 			for _, part := range cand.Content.Parts {
 				if text, ok := part.(genai.Text); ok {
-					fmt.Println(text)
+					log.Println(text)
 					return string(text)
 				}
 			}
