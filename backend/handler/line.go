@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -34,8 +35,9 @@ type EventPostback struct {
 }
 
 type EventMessage struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type            string `json:"type"`
+	Text            string `json:"text"`
+	MarkAsReadToken string `json:"markAsReadToken"`
 }
 
 // struct JSON Reply Payload send to line server
@@ -53,14 +55,14 @@ func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
 	// convert struct to string JSON (look like JSON.stringify)
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+		log.Println("Error marshaling JSON:", err)
 		return
 	}
 
 	// Create Requset to Line Server
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		log.Println("Error creating request:", err)
 		return
 	}
 
@@ -72,7 +74,7 @@ func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error sending request:", err)
+		log.Println("Error sending request:", err)
 		return
 	}
 
@@ -80,7 +82,7 @@ func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
 	defer res.Body.Close()
 
 	// Check LINE Response
-	fmt.Println("LINE Response Status:", res.Status)
+	log.Println("LINE Response Status:", res.Status)
 }
 
 // strcut config
@@ -127,8 +129,20 @@ func (h *LineHandler) Webhook(ctx *gin.Context) {
 		// Check type is type message
 		if event_0.Type == "message" {
 
+			readToken := event_0.Message.MarkAsReadToken
+
+			// === Read status ===
+			markReadPayload := map[string]string{"markAsReadToken": readToken}
+			jsonData, _ := json.Marshal(markReadPayload)
+			req, _ := http.NewRequest("POST", "https://api.line.me/v2/bot/chat/markAsRead", bytes.NewBuffer(jsonData))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+token)
+			client := &http.Client{}
+			client.Do(req)
+			// =========================================================
+
 			ctx_ai := context.Background()
-			ctx_ai, cancel := context.WithTimeout(ctx_ai, 15*time.Second)
+			ctx_ai, cancel := context.WithTimeout(ctx_ai, 20*time.Second)
 			defer cancel()
 
 			// Call function GenerateContent_textOnly get Text
