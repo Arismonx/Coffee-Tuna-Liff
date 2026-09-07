@@ -13,6 +13,9 @@ import (
 	"github.com/Arismonx/Coffee-Tuna-Liff/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/generative-ai-go/genai"
+	"github.com/weaviate/weaviate-go-client/v4/weaviate"
+	"github.com/weaviate/weaviate-go-client/v4/weaviate/graphql"
+	"google.golang.org/api/option"
 )
 
 // this past is format for Events Webhook from request line server
@@ -87,18 +90,21 @@ func CreateSendRequesReply(payload ReplyPayload, Token string, url string) {
 
 // strcut config
 type LineHandler struct {
-	Config config.Config
-	Model  *genai.GenerativeModel
+	Config  config.Config
+	Model   *genai.GenerativeModel
+	WClient *weaviate.Client
 }
 
 // Construct LineHandler
 func NewLineHandler(
 	Config config.Config,
 	Model *genai.GenerativeModel,
+	WClient *weaviate.Client,
 ) *LineHandler {
 	return &LineHandler{
-		Config: Config,
-		Model:  Model,
+		Config:  Config,
+		Model:   Model,
+		WClient: WClient,
 	}
 }
 
@@ -145,8 +151,52 @@ func (h *LineHandler) Webhook(ctx *gin.Context) {
 			ctx_ai, cancel := context.WithTimeout(ctx_ai, 20*time.Second)
 			defer cancel()
 
+			// A. แปลงข้อความผู้ใช้เป็น Vector (768 มิติ) ด้วย models/gemini-embedding-001
+			aiClient, err := genai.NewClient(ctx_ai, option.WithAPIKey(h.Config.GeminiAPIKey)) // หรือใช้ API Key จาก Config
+			var retrievedText string
+
+			if err == nil {
+				defer aiClient.Close()
+				em := aiClient.EmbeddingModel("gemini-embedding-001")
+
+				embedRes, err := em.EmbedContent(ctx_ai, genai.Text(user_message))
+
+				if err != nil {
+					fmt.Println("Error ตอนทำ Embedding:", err)
+				} else {
+
+					questionVector := embedRes.Embedding.Values
+
+					// B. ค้นหาข้อมูลที่ใกล้เคียงที่สุดจาก Weaviate
+					nearVec := h.WClient.GraphQL().NearVectorArgBuilder().WithVector(questionVector)
+					if result, err := h.WClient.GraphQL().Get().
+						WithClassName("Document").
+						WithFields(graphql.Field{Name: "text"}).
+						WithNearVector(nearVec).
+						WithLimit(1).
+						Do(ctx_ai); err == nil {
+
+						fmt.Println("Weaviate Raw Result:", result.Data)
+
+						// แกะข้อมูลข้อความออกจากผลลัพธ์ GraphQL
+						if get, ok := result.Data["Get"].(map[string]interface{}); ok {
+							if docs, ok := get["Document"].([]interface{}); ok && len(docs) > 0 {
+								if doc, ok := docs[0].(map[string]interface{}); ok {
+									retrievedText, _ = doc["text"].(string)
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// C. สร้าง RAG Prompt (นำข้อมูลที่ค้นเจอมาบวกกับคำถาม)
+			finalPrompt := fmt.Sprintf(`ตอบคำถามลูกค้าโดยใช้ "ข้อมูลอ้างอิง" ที่กำหนดให้เท่านั้น ห้ามเดาเอาเอง
+ข้อมูลอ้างอิง: %s
+คำถามลูกค้า: %s`, retrievedText, user_message)
+
 			// Call function GenerateContent_textOnly get Text
-			resp_message := model.GenerateContent_textOnly(ctx_ai, user_message, h.Model)
+			resp_message := model.GenerateContent_textOnly(ctx_ai, finalPrompt, h.Model)
 
 			// Payload Data Reply
 			payload := ReplyPayload{

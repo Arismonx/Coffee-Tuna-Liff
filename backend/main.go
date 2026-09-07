@@ -10,6 +10,7 @@ import (
 	"github.com/Arismonx/Coffee-Tuna-Liff/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/google/generative-ai-go/genai"
+	"github.com/weaviate/weaviate-go-client/v4/weaviate"
 	"google.golang.org/api/option"
 )
 
@@ -37,8 +38,14 @@ func main() {
 		},
 	}
 
+	// เชื่อมต่อ Weaviate Clien
+	wClient, err := weaviate.NewClient(weaviate.Config{Host: "localhost:8080", Scheme: "http"})
+	if err != nil {
+		log.Fatalf("Weaviate Connection Error: %v", err)
+	}
+
 	// create LineHandler and assing cfg to attribute Config
-	lineHandler := handler.NewLineHandler(cfg, model)
+	lineHandler := handler.NewLineHandler(cfg, model, wClient)
 
 	router := gin.Default()
 
